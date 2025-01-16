@@ -11,13 +11,13 @@ const App = () => {
 
   useEffect(() => {
     if (localStorage.getItem("user")) {
-      setUser(localStorage.getItem("user")!);
-      console.log(localStorage.getItem("user"));
-      console.log({ user });
+      setUser(JSON.parse(localStorage.getItem("user")!));
+      // console.log(localStorage.getItem("user"));
     }
   }, []);
 
   useEffect(() => {
+    console.log("user.name= ", user.name);
     user == "" ? navigate("/") : navigate("/menu");
   }, [user]);
 
@@ -25,7 +25,7 @@ const App = () => {
     <div className="app">
       <Routes>
         <Route index element={<Login />} />
-        <Route path="menu" element={<Menu />} />
+        <Route path="menu" element={<Menu user={user} />} />
         <Route path="register" element={<Register />} />
       </Routes>
     </div>

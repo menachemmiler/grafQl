@@ -47,6 +47,15 @@ export const resolvers = {
         return error.message; // מחזיר את הודעת השגיאה במידה ויש בעיה
       }
     },
+    gameBytitle: async (_: any, args: { title: string }) => {
+      try {
+        const game = await Game.findOne({ title: args.title });
+        if (!game) throw new Error("Game not found with this title");
+        return [game];
+      } catch (error: any) {
+        return error;
+      }
+    },
     // מחזיר מחבר לפי מזהה
     author: async (_: any, args: IAuthor) => {
       try {

@@ -28,6 +28,7 @@ review(id: ID!): Review
 game(id: ID!): Game
 author(id: ID!): Author
 authorByName(name: String!): Author
+gameBytitle(title: String!): [Game]
 }
 type Mutation {
 seed: [Game]

@@ -1,39 +1,3 @@
-// import { useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-
-
-// interface Props {
-//   user: { __typename: string; id:string; name: string };
-// }
-
-// const Menu = ({user}:Props) => {
-//   const navigate = useNavigate();
-
-//   useEffect(() => {
-//     if (!localStorage.getItem("user")) {
-//       navigate("/");
-//     }
-//   }, []);
-//   const handleLogout = () => {
-//     localStorage.removeItem("user");
-//     navigate("/");
-//   };
-//   return (
-//     <div className="menu">
-//       <div className="header">
-//         <button onClick={handleLogout}>Logout</button>
-//       </div>
-//       <div className="main">
-//         <h1>hello {user.name}</h1>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default Menu;
-
-
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gql, useQuery, useMutation } from "@apollo/client";
@@ -42,7 +6,6 @@ import {
   CardContent,
   Typography,
   TextField,
-  Button,
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
@@ -51,17 +14,39 @@ interface Props {
   user: { __typename: string; id: string; name: string };
 }
 
-const GAMES_QUERY = (fields: string, filter: string) => gql`
-  query GetGames {
-    games ${filter} {
-      ${fields}
-    }
+const GAMES_QUERY = (fields: string, searchTitle?: string) => {
+  if (searchTitle) {
+    return gql`
+      query GetGameByTitle {
+        gameBytitle(title: "${searchTitle}") {
+          ${fields}
+        }
+      }
+    `;
+  } else {
+    return gql`
+      query GetGames {
+        games  {
+          ${fields}
+        }
+      }
+    `;
   }
-`;
+};
 
 const ADD_REVIEW_MUTATION = gql`
-  mutation AddReview($rating: Int!, $content: String!, $gameId: ID!, $authorId: ID!) {
-    addReview(rating: $rating, content: $content, gameId: $gameId, authorId: $authorId) {
+  mutation AddReview(
+    $rating: Int!
+    $content: String!
+    $gameId: ID!
+    $authorId: ID!
+  ) {
+    addReview(
+      rating: $rating
+      content: $content
+      gameId: $gameId
+      authorId: $authorId
+    ) {
       id
       content
       rating
@@ -71,10 +56,13 @@ const ADD_REVIEW_MUTATION = gql`
 
 const Menu = ({ user }: Props) => {
   const navigate = useNavigate();
-  const [selectedFields, setSelectedFields] = useState<string[]>(["title", "id"]);
-  const [filter, setFilter] = useState<string>("");
+  const [selectedFields, setSelectedFields] = useState<string[]>([
+    "title",
+    "id",
+  ]);
+  const [searcTitle, setSearchTitle] = useState("");
   const { data, loading, error, refetch } = useQuery(
-    GAMES_QUERY(selectedFields.join(" "), filter)
+    GAMES_QUERY(selectedFields.join(" "), searcTitle)
   );
 
   const [addReview] = useMutation(ADD_REVIEW_MUTATION);
@@ -98,12 +86,11 @@ const Menu = ({ user }: Props) => {
     );
   };
 
-  // const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-  //   const value = event.target.value;
-  //   setFilter(value ? `(title: "${value}")` : "");
-  // };
-
-  const handleAddReview = async (gameId: string, content: string, rating: number) => {
+  const handleAddReview = async (
+    gameId: string,
+    content: string,
+    rating: number
+  ) => {
     try {
       await addReview({
         variables: { rating, content, gameId, authorId: user.id },
@@ -114,7 +101,7 @@ const Menu = ({ user }: Props) => {
     }
   };
 
-  const fields = ["platform", "reviews { rating content id }"];
+  const fields = ["platform", "reviews { rating content id author { name } }"];
 
   return (
     <div className="menu">
@@ -134,19 +121,78 @@ const Menu = ({ user }: Props) => {
               label={field}
             />
           ))}
-          {/* <TextField
-            label="Filter by Title"
+          <TextField
+            label="חיפוש לפי שם הספר"
             variant="outlined"
             size="small"
-            onChange={handleFilterChange}
-          /> */}
+            onChange={(e) => setSearchTitle(e.target.value)}
+            value={searcTitle}
+          />
         </div>
       </div>
       <div className="main">
         <h1>Hello {user.name}</h1>
         {loading && <p>Loading...</p>}
         {error && <p>Error: {error.message}</p>}
+
+        {/* יצירת מערך אחיד של המשחקים */}
+        {(() => {
+          const games = data?.games || data?.gameBytitle || [];
+          // if (games.length === 0 && !loading && !error) {
+          //   return <p>No games found.</p>;
+          // }
+
+          return (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+              {games.map((game: any) => (
+                <Card key={game.id} style={{ width: 300 }}>
+                  <CardContent>
+                    <Typography variant="h6">{game.title}</Typography>
+                    {game.platform && (
+                      <Typography variant="body2">
+                        Platforms: {game.platform.join(", ")}
+                      </Typography>
+                    )}
+                    {game.reviews && (
+                      <>
+                        <Typography variant="body2">Reviews:</Typography>
+                        {game.reviews.map((review: any) => (
+                          <Typography key={review.id} variant="body2">
+                            {review.content} (Rating: {review.rating}) (כותב
+                            חוות הדעת: {review.author.name})
+                          </Typography>
+                        ))}
+                      </>
+                    )}
+                    <div>
+                      <TextField
+                        label="Review Content"
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        onBlur={(event) =>
+                          handleAddReview(game.id, event.target.value, 5)
+                        }
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* <div className="main">
+        <h1>Hello {user.name}</h1>
+        {loading && <p>Loading...</p>}
+        {error && <p>Error: {error.message}</p>}
+        
         <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+          
+        <pre>{JSON.stringify(data, null, 2)}</pre>
+            
+
           {data?.games?.map((game: any) => (
             <Card key={game.id} style={{ width: 300 }}>
               <CardContent>
@@ -161,7 +207,8 @@ const Menu = ({ user }: Props) => {
                     <Typography variant="body2">Reviews:</Typography>
                     {game.reviews.map((review: any) => (
                       <Typography key={review.id} variant="body2">
-                        {review.content} (Rating: {review.rating})
+                        {review.content} (Rating: {review.rating}) (כותב חוות
+                        הדעת: {review.author.name})
                       </Typography>
                     ))}
                   </>
@@ -181,7 +228,7 @@ const Menu = ({ user }: Props) => {
             </Card>
           ))}
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

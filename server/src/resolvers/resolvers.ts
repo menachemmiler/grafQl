@@ -57,6 +57,15 @@ export const resolvers = {
         return error.message;
       }
     },
+    authorByName: async (_: any, args: { name: string}) => {
+      try {
+        const author = await Author.findOne({ name: args.name });
+        if (!author) throw new Error("Author not found with this name");
+        return author;
+      } catch (error: any) {
+        return error;
+      }
+    },
     // מחזיר ביקורת לפי מזהה
     review: async (_: any, args: IReview) => {
       try {
